@@ -23,6 +23,7 @@ declare module 'vue' {
     ATextarea: typeof import('ant-design-vue/es')['Textarea']
     ATooltip: typeof import('ant-design-vue/es')['Tooltip']
     AUploadDragger: typeof import('ant-design-vue/es')['UploadDragger']
+    CopyOutlined: typeof import('@ant-design/icons-vue')['CopyOutlined']
     Greet: typeof import('./src/components/Greet.vue')['default']
     InboxOutlined: typeof import('@ant-design/icons-vue')['InboxOutlined']
     InfoCircleOutlined: typeof import('@ant-design/icons-vue')['InfoCircleOutlined']
