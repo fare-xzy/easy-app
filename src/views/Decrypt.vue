@@ -3,8 +3,11 @@
 </script>
 
 <template>
-    <router-view />
+22222222222222222
+
+
 </template>
 
 <style scoped>
+
 </style>
