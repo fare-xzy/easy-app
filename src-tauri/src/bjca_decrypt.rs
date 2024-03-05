@@ -1,8 +1,9 @@
 use crc32fast::Hasher;
+use gm_sm2::error::Sm2Result;
+use gm_sm2::key::{Sm2Model, Sm2PrivateKey};
 use rand::prelude::StdRng;
 use rsa::rand_core::SeedableRng;
 use serde::{Deserialize, Serialize};
-
 #[derive(Serialize, Deserialize)]
 struct EncryptPackage {
     Digest: Digest,
@@ -18,16 +19,17 @@ struct Digest {
     Value: String
 }
 
-struct SecretKey {
-    sn: String,
-    private_key: String
-}
-
 #[cfg(test)]
 mod tests {
     use std::fs;
-    use crate::bjca_decrypt::{crc32_verify, json_deserialize};
+    use base64::DecodeError;
+    use crate::bjca_decrypt::{crc32_verify, decrypt_rsa_keys, decrypt_sm2_keys, json_deserialize};
+    use crate::conts;
+    use base64::prelude::*;
+    use gm_sm2::key::{gen_keypair, Sm2Model};
+
     pub static RSA_PATH: &'static str = "../手写签名加密包RSA.txt";
+    pub static SM2_PATH: &'static str = "../手写签名加密包SM2.txt";
     #[test]
     fn test_crc32() -> Result<(), Box<dyn std::error::Error>>{
         let result = fs::read(&RSA_PATH)?;
@@ -72,7 +74,31 @@ mod tests {
         let dese_resutl = json_deserialize(&cow);
         match dese_resutl {
             Ok(encrypt_package) => {
-                println!("{}", encrypt_package.EncKey)
+                let rsa_key = conts::RSA_KEY.clone();
+                let result1 = BASE64_STANDARD.decode(encrypt_package.EncKey);
+                match result1 {
+                    Ok(enc) => {
+                        decrypt_rsa_keys(conts::RSA_KEY.private_key, enc);
+                    }
+                    Err(_) => {}
+                }
+
+            }
+            Err(_) => {}
+        }
+        Ok(())
+    }
+    #[test]
+    fn test_decrypt_sm2() -> Result<(), Box<dyn std::error::Error>>{
+        let result = fs::read(&SM2_PATH)?;
+        let cow = String::from_utf8(result)?;
+        let dese_resutl = json_deserialize(&cow);
+        match dese_resutl {
+            Ok(encrypt_package) => {
+                let rsa_key = conts::RSA_KEY.clone();
+                let enc = BASE64_STANDARD.decode(encrypt_package.EncKey)?;
+                let pk = BASE64_STANDARD.decode(conts::SM2_KEY.private_key)?;
+                decrypt_sm2_keys(&hex::encode(pk), enc).expect("TODO: panic message");
             }
             Err(_) => {}
         }
@@ -114,10 +140,16 @@ use rsa::pkcs8::DecodePrivateKey;
 
 struct PaddingScheme(Option<StdRng>);
 
-
-
 // RSA解密
-fn decrypt_package(private_str: &str, encrypt_data: &[u8]) {
-    let private_key = RsaPrivateKey::from_pkcs8_pem(private_str);
+fn decrypt_rsa_keys(private_str: &str, encrypt_data: Vec<u8>) -> Vec<u8>{
+    let private_key = RsaPrivateKey::from_pkcs8_pem(&*private_str);
     let dec_data = private_key.unwrap().decrypt(Pkcs1v15Encrypt, &encrypt_data).expect("failed to decrypt");
+    dec_data
+}
+
+// SM2解密
+fn decrypt_sm2_keys(private_str_hex: &str, encrypt_data: Vec<u8>) -> Sm2Result<Vec<u8>> {
+    let private_key = Sm2PrivateKey::from_hex_string(private_str_hex).unwrap();
+    let dec_data = private_key.decrypt(&encrypt_data, false, Sm2Model::C1C3C2);
+    dec_data
 }
