@@ -26,7 +26,7 @@ mod tests {
     use crate::bjca_decrypt::{crc32_verify, decrypt_rsa_keys, decrypt_sm2_keys, json_deserialize};
     use crate::conts;
     use base64::prelude::*;
-    use gm_sm2::key::{gen_keypair, Sm2Model};
+    use gm_sm2::key::{gen_keypair, Sm2Model, Sm2PrivateKey, Sm2PublicKey};
 
     pub static RSA_PATH: &'static str = "../手写签名加密包RSA.txt";
     pub static SM2_PATH: &'static str = "../手写签名加密包SM2.txt";
@@ -78,7 +78,8 @@ mod tests {
                 let result1 = BASE64_STANDARD.decode(encrypt_package.EncKey);
                 match result1 {
                     Ok(enc) => {
-                        decrypt_rsa_keys(conts::RSA_KEY.private_key, enc);
+                        let key = decrypt_rsa_keys(conts::RSA_KEY.private_key, enc);
+                        println!("{:?}", key)
                     }
                     Err(_) => {}
                 }
@@ -98,12 +99,27 @@ mod tests {
                 let rsa_key = conts::RSA_KEY.clone();
                 let enc = BASE64_STANDARD.decode(encrypt_package.EncKey)?;
                 let pk = BASE64_STANDARD.decode(conts::SM2_KEY.private_key)?;
-                decrypt_sm2_keys(&hex::encode(pk), enc).expect("TODO: panic message");
+                let key = decrypt_sm2_keys(&hex::encode(pk), enc);
+                println!("{:?}", key)
             }
             Err(_) => {}
         }
         Ok(())
     }
+
+    #[test]
+    fn test_encrypt_decrypt_with_java_bouncycastle_gen_key() {
+        let public_key = "046a6ff781355cc1a9e538213f3a2074ceb32eae9e1caa090e74bbac9024cd58969619ec8dd797635773a9e8c3401135687a49381bb088d4f10c8feed899bf69c5";
+        let private_key = "ff88f12d6f28a852cc59ace674efb842163f1c5294890be9843fe5c20e26a011";
+        let pk = Sm2PublicKey::from_hex_string(public_key).unwrap();
+        let sk = Sm2PrivateKey::from_hex_string(private_key).unwrap();
+
+        let msg = "你好 world,asjdkajhdjadahkubbhj12893718927391873891,@@！！ world,1231 wo12321321313asdadadahello world，hello world".as_bytes();
+        let encrypt = pk.encrypt(msg, false, Sm2Model::C1C3C2).unwrap();
+        let plain = sk.decrypt(&encrypt, false, Sm2Model::C1C3C2).unwrap();
+        assert_eq!(msg, plain);
+    }
+
 }
 
 // json反序列化
@@ -148,8 +164,41 @@ fn decrypt_rsa_keys(private_str: &str, encrypt_data: Vec<u8>) -> Vec<u8>{
 }
 
 // SM2解密
-fn decrypt_sm2_keys(private_str_hex: &str, encrypt_data: Vec<u8>) -> Sm2Result<Vec<u8>> {
+fn decrypt_sm2_keys(private_str_hex: &str, encrypt_data: Vec<u8>) -> Vec<u8> {
     let private_key = Sm2PrivateKey::from_hex_string(private_str_hex).unwrap();
-    let dec_data = private_key.decrypt(&encrypt_data, false, Sm2Model::C1C3C2);
+    let dec_data = private_key.decrypt(&parse_java_ciphertext(&encrypt_data), false, Sm2Model::C1C2C3).expect("failed to decrypt");
     dec_data
+}
+
+fn parse_java_ciphertext(ciphertext: &[u8]) -> Vec<u8> {
+    let mut start: usize = 4;
+    let mut x_len = ciphertext[start-1] as usize;
+    if x_len == 33 {
+        start += 1;
+        x_len -= 1;
+    }
+    let x = &ciphertext[start..start+x_len];
+
+    start = start + x_len + 2;
+    let mut y_len = ciphertext[start - 1] as usize;
+    if y_len == 33 {
+        start += 1;
+        y_len -= 1;
+    }
+    let y = &ciphertext[start..start+y_len];
+
+    start = start + y_len + 2;
+    let hash_len = ciphertext[start - 1] as usize;
+    let hash = &ciphertext[start..start+hash_len];
+
+    start = start + hash_len + 2;
+    let kdf_len = ciphertext[start - 1] as usize;
+    let kdf = &ciphertext[start..start+kdf_len];
+
+    let mut tm: Vec<u8> = Vec::new();
+    tm.extend_from_slice(x);
+    tm.extend_from_slice(y);
+    tm.extend_from_slice(hash);
+    tm.extend_from_slice(kdf);
+    tm
 }
