@@ -116,6 +116,7 @@ mod tests {
 
         let msg = "你好 world,asjdkajhdjadahkubbhj12893718927391873891,@@！！ world,1231 wo12321321313asdadadahello world，hello world".as_bytes();
         let encrypt = pk.encrypt(msg, false, Sm2Model::C1C3C2).unwrap();
+        println!("{}", BASE64_STANDARD.encode(encrypt.clone()));
         let plain = sk.decrypt(&encrypt, false, Sm2Model::C1C3C2).unwrap();
         assert_eq!(msg, plain);
     }
