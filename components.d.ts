@@ -9,7 +9,6 @@ declare module 'vue' {
   export interface GlobalComponents {
     ACard: typeof import('ant-design-vue/es')['Card']
     ACol: typeof import('ant-design-vue/es')['Col']
-    ADivider: typeof import('ant-design-vue/es')['Divider']
     ALayout: typeof import('ant-design-vue/es')['Layout']
     ALayoutContent: typeof import('ant-design-vue/es')['LayoutContent']
     ALayoutFooter: typeof import('ant-design-vue/es')['LayoutFooter']

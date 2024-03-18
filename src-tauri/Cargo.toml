@@ -20,7 +20,6 @@ rand = "0.8.5"
 base64 = "0.22.0"
 gm-sm2 = "0.12.1"
 hex = "0.4.3"
-openssl = { version = "0.10.64", features = ["vendored"] }
 
 
 [features]

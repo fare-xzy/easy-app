@@ -3,7 +3,6 @@
 
 mod bjca_decrypt;
 mod conts;
-mod parse_cert;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
